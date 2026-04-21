@@ -1,0 +1,30 @@
+---
+
+- name: add epel
+  yum:
+    name: epel-release
+    state: present
+
+- name: Installing Apache And PHP Deps
+  package:
+    name:
+      - httpd
+      - php
+      - php-bcmath
+      - php-curl
+      - php-imagick
+      - php-intl
+      - php-json
+      - php-mbstring
+      - php-mysqlnd
+      - php-xml
+      - php-zip
+    state: present
+
+- name: Enable Apache2 (Httpd)
+  service:
+    name: httpd
+    state: started
+    enabled: yes
+
+

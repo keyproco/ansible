@@ -1,0 +1,92 @@
+---
+# Add vars
+- name: add epel
+  yum:
+    name: epel-release
+    state: present
+
+- name: Installing Apache And PHP Deps
+  package:
+    name:
+      - httpd
+      - php
+      - php-bcmath
+      - php-curl
+      - php-imagick
+      - php-intl
+      - php-json
+      - php-mbstring
+      - php-mysqlnd
+      - php-xml
+      - php-zip
+    state: present
+
+- name: Starting & Enabling Httpd
+  service:
+    name: httpd
+    state: started
+    enabled: yes
+
+- name: Enable php fpm
+  service:
+    name: php-fpm
+    enabled: yes
+
+- name: Download Wordpress
+  get_url:
+    url: "http://wordpress.org/latest.tar.gz"
+    dest: "/tmp"
+
+- name: Expand Wordpress Compressed File
+  unarchive:
+    src: /tmp/latest.tar.gz
+    dest: /tmp/
+    remote_src: true
+
+- name: Copy Wordpress Directory to Httpd Web Directory
+  copy:
+    src: /tmp/wordpress
+    dest: /var/www/html
+    remote_src: true
+- name: Ensure app directory is owned by www-data
+  file:
+    path: /var/www/html
+    owner: apache
+    group: apache
+    recurse: yes
+
+- name: Copy Sample Config File
+  copy:
+    src: /var/www/html/wordpress/wp-config-sample.php
+    dest: /var/www/html/wordpress/wp-config.php
+    remote_src: true
+
+- name: Edit Wordpress Config File
+  lineinfile:
+    dest: "/var/www/html/wordpress/wp-config.php"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line  }}"
+  loop:
+  - { regexp: "^\\s*define\\(\\s*'DB_HOST',", line: "define( 'DB_HOST', 'ubuntu1' );" }
+  - { regexp: "^\\s*define\\(\\s*'DB_USER',", line: "define( 'DB_USER', 'wp_user' );" }
+  - { regexp: "^\\s*define\\(\\s*'DB_PASSWORD',", line: "define( 'DB_PASSWORD', 'wp_password' );" }
+  - { regexp: "^\\s*define\\(\\s*'DB_NAME',", line: "define( 'DB_NAME', 'wordpress' );" }
+- name: Configure Apache vHost
+
+  copy:
+    src: ./files/wordpress.conf
+    dest: /etc/httpd/conf.d/wordpress.conf
+    remote_src: false
+
+- name: Configure php-fpm ( Disable acl_users )
+  replace:
+    path: /etc/php-fpm.d/www.conf
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+  loop:
+  - { regexp: "^listen.acl_users = apache,nginx", replace: ";listen.acl_users = apache,nginx" }
+  - { regexp: "^;listen.owner = nobody", replace: "listen.owner = apache" }
+  - { regexp: "^;listen.group = nobody", replace: "listen.group = apache" }
+  - { regexp: "^;listen.mode = nobody", replace: "listen.mode = 0660" }
+  notify: Restart php fpm
+

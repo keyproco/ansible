@@ -1,0 +1,39 @@
+# installing mysql
+---
+- name: Install PyMysql
+  apt:
+    state: present
+    name: python3-pymysql
+
+- name: Install mysql-server
+  apt:
+    state: present
+    name: mysql-server
+
+- name: Start Mysql Server
+  service:
+    name: mysql
+    state: started
+    enabled: yes
+
+- name: Create New User
+  mysql_user:
+    name: "wp_user"
+    host: "%"
+    password: "wp_password"
+    priv: "*.*:ALL"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Create Database
+  mysql_db:
+    name: wordpress
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Allow connection from outside
+  lineinfile:
+    path: "/etc/mysql/mysql.conf.d/mysqld.cnf"
+    regexp: "^bind-address = 127.0.0.1"
+    line: "bind-address = 0.0.0.0"
+  notify: Restart Mysql
